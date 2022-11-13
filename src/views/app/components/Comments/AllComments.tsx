@@ -6,6 +6,7 @@ import RenderComment, {
   CommentActionListenerType,
   CommentInteractionListenersType,
 } from "./RenderComment";
+import { CommentAction } from '../util';
 
 const getReplies = (comments: Array<CommentMetadata>, currentCommentId: string) =>
   comments.filter(comment => comment.parentId === currentCommentId).sort(createdAtComparator);
@@ -19,6 +20,44 @@ interface AllCommentsProps {
   commentInteractionListeners: CommentInteractionListenersType;
 }
 
+type AllCommentsHelperProps = {
+  comment: CommentMetadata;
+  replies: Array<CommentMetadata>;
+} & Omit<AllCommentsProps, 'allUsers' | 'commonParentId'>;
+
+/**
+ * Component to render the provided comment, and its respective replies.
+ * The replies are rendered by recursing on the same component.
+ */
+const AllCommentsHelper = ({
+  comment,
+  replies,
+  comments,
+  currentLevel = 0,
+  commentActionListeners,
+  commentInteractionListeners
+}: AllCommentsHelperProps) => {
+  return (<>
+    <RenderComment
+      key={comment.id}
+      currentLevel={currentLevel}
+      comment={comment}
+      commentActionListeners={commentActionListeners}
+      commentInteractionListeners={commentInteractionListeners}
+    />
+    {replies.length > 0 && replies.map((reply: any) => (
+      <AllCommentsHelper
+        comment={reply}
+        comments={comments}
+        replies={getReplies(comments, reply.id)}
+        currentLevel={currentLevel + 1}
+        commentActionListeners={commentActionListeners}
+        commentInteractionListeners={commentInteractionListeners}
+      />
+    ))}
+  </>);
+};
+
 const AllComments = ({
   allUsers,
   comments,
@@ -27,32 +66,20 @@ const AllComments = ({
   commentActionListeners,
   commentInteractionListeners
 }: AllCommentsProps) => {
-  const topLevelComments = comments.filter(comment => comment.parentId === commonParentId);
-  console.log(currentLevel, topLevelComments);
+  // top-level comments cannot be a reply, therefore filtering out all the comments which are replies.
+  const topLevelComments = comments.filter(comment => comment.parentId === commonParentId && comment.commentType !== CommentAction.REPLY);
   return (
     <React.Fragment>
-      {topLevelComments.map(topLevelComment => {
-        const replies = getReplies(comments, topLevelComment.id);
-        return (<>
-          <RenderComment
-            key={topLevelComment.id}
-            currentLevel={currentLevel}
-            comment={topLevelComment}
-            commentActionListeners={commentActionListeners}
-            commentInteractionListeners={commentInteractionListeners}
-          />
-          {replies.length > 0 && replies.map(reply => (
-            <AllComments
-              comments={comments}
-              allUsers={allUsers}
-              currentLevel={currentLevel + 1}
-              commonParentId={topLevelComment.id}
-              commentActionListeners={commentActionListeners}
-              commentInteractionListeners={commentInteractionListeners}
-            />
-          ))}
-        </>);
-      })}
+      {topLevelComments.map(topLevelComment => (
+        <AllCommentsHelper
+          comment={topLevelComment}
+          comments={comments}
+          replies={getReplies(comments, topLevelComment.id)}
+          currentLevel={currentLevel}
+          commentActionListeners={commentActionListeners}
+          commentInteractionListeners={commentInteractionListeners}
+        />
+      ))}
     </React.Fragment>
   );
 };

@@ -1,6 +1,12 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import { getAllComments, createComment, updateCommentById, getCommentById } from '../../db/repositories/comments';
+import {
+  getAllComments,
+  createComment,
+  updateCommentById,
+  // archiveComment,
+  // purgeComment
+} from '../../db/repositories/comments';
 import { createUser, getAllUsers } from '../../db/repositories/users';
 import { CollectionTypes, DocumentTypes } from '../../db/types';
 import CommentForm, { SubmitLabel } from './components/Comments/Form/CommentForm';
@@ -69,6 +75,7 @@ const CommentsApp = () => {
    * @param commentId considered to be the `parentId` for the dummy comment that'll be added for rendering a reply form
    */
   const onReplyClick: CommentActionClickFnType = commentId => {
+    console.log('onReplyClick', commentId);
     const commentsWithoutStaleRepliesAndEdits = comments.reduce((acc, c) => {
       if (c.commentType === CommentAction.REPLY || c.id === fakeCommentId) {
         return acc;
@@ -95,12 +102,33 @@ const CommentsApp = () => {
     setComments([replyWithoutCommentId, ...commentsWithoutStaleRepliesAndEdits]);
   };
 
+  // WIP
+  // const onDeleteClick = async (commentId: string) => {
+  //   try {
+  //     if (window.confirm('Are you sure you want to delete the comment?')) {
+  //       const doesCommentContainReplies = comments.some(c => c.parentId === commentId);
+  //       if (doesCommentContainReplies) {
+  //         await archiveComment({ commentId });
+  //         const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
+  //         const archivedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
+  //         commentsCopy[archivedCommentIndex].isArchived = true;
+  //         setComments(commentsCopy);
+  //       } else {
+  //         await purgeComment({ commentId });
+          
+  //       }
+  //     }
+  //   } catch (err: any) {
+  //     console.error(err, 'comment could not be deleted!');
+  //   }
+  // };
+
   /**
    * Triggered when user clicks on any comment edit, if edit is available.
    * @param commentId is the `commentId` of the comment that's being edited.
    */
   const onEditClick: CommentActionClickFnType = commentId => {
-    console.log('onEditClick');
+    console.log('onEditClick', commentId);
     const commentsCopyWithoutStaleRepliesOrEdits = comments.reduce((acc, c) => {
       if (c.commentType === CommentAction.REPLY) {
         return acc;
@@ -122,6 +150,7 @@ const CommentsApp = () => {
    * @param commentId unique identifier for the comment that's about to be edited.
    */
   const onEditSubmit = async (commentTextBody: string, commentId: string) => {
+    console.log('onEditSubmit', commentId);
     await updateCommentById({ commentTextBody, commentId });
     const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
     const editedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
@@ -136,10 +165,10 @@ const CommentsApp = () => {
   /**
    * 
    * @param commentTextBody replied comment's body.
-   * @param parentCommentId if `null`, then it's a comment with no parent, meaning new top-level comment, otherwise, there's a comment which is parent to it.
+   * @param parentCommentId if `null`, then it's a comment with no parent (*i.e.* new top-level comment), otherwise, there's a comment which is parent to it.
    */
   const onReplySubmit = async (commentTextBody: string, parentCommentId: string | null) => {
-    console.log(parentCommentId);
+    console.log('onReplySubmit', parentCommentId);
     const newComment = await getNewAddedComment(commentTextBody, parentCommentId);
     const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
     const replyCommentIndex = commentsCopy.findIndex(c => c.id === fakeCommentId);

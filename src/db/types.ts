@@ -8,6 +8,7 @@ export namespace DocumentTypes {
     downvotes: number;
     createdAt: string;
     commentTextBody: string;
+    isArchived?: boolean;
   }
   export interface User {
     id: string;

@@ -12,6 +12,9 @@ export type CommentCreateRequestType = {
   commentTextBody: string;
   parentCommentId: string | null;
 };
+export type CommentIdRequestType = {
+  commentId: string;
+}
   
 export const getAllComments = async () => {
   const allDocs = await db.getDocs(comments);
@@ -41,13 +44,23 @@ export const createComment = async ({
   return await getCommentById({ commentId: addedCommentRef.id });
 };
 
-export const getCommentById = async({ commentId }: { commentId: string }) => {
+export const getCommentById = async({ commentId }: CommentIdRequestType) => {
   const docRef = db.doc(comments, commentId);
   const snapshot = await db.getDoc(docRef);
-  return snapshot.data() as Comment;
+  return { ...snapshot.data(), id: commentId } as Comment;
 };
 
 export const updateCommentById = async({ commentId, commentTextBody }: { commentId: string, commentTextBody: string }) => {
   const docRef = db.doc(comments, commentId);
   await db.updateDoc(docRef, { commentTextBody });
+}
+
+export const archiveComment = async({ commentId }: CommentIdRequestType) => {
+  const docRef = db.doc(comments, commentId);
+  await db.updateDoc(docRef, { isArchived: true });
+}
+
+export const purgeComment = async ({ commentId }: CommentIdRequestType) => {
+  const docRef = db.doc(comments, commentId);
+  await db.deleteDoc(docRef);
 }
