@@ -95,6 +95,10 @@ const CommentsApp = () => {
     setComments([replyWithoutCommentId, ...commentsWithoutStaleRepliesAndEdits]);
   };
 
+  /**
+   * Triggered when user clicks on any comment edit, if edit is available.
+   * @param commentId is the `commentId` of the comment that's being edited.
+   */
   const onEditClick: CommentActionClickFnType = commentId => {
     console.log('onEditClick');
     const commentsCopyWithoutStaleRepliesOrEdits = comments.reduce((acc, c) => {
@@ -112,6 +116,11 @@ const CommentsApp = () => {
     setComments(commentsCopyWithoutStaleRepliesOrEdits);
   };
 
+  /**
+   * 
+   * @param commentTextBody comment's text body, the comment might just have a body already existing.
+   * @param commentId unique identifier for the comment that's about to be edited.
+   */
   const onEditSubmit = async (commentTextBody: string, commentId: string) => {
     await updateCommentById({ commentTextBody, commentId });
     const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
@@ -124,6 +133,11 @@ const CommentsApp = () => {
     }
   };
 
+  /**
+   * 
+   * @param commentTextBody replied comment's body.
+   * @param parentCommentId if `null`, then it's a comment with no parent, meaning new top-level comment, otherwise, there's a comment which is parent to it.
+   */
   const onReplySubmit = async (commentTextBody: string, parentCommentId: string | null) => {
     console.log(parentCommentId);
     const newComment = await getNewAddedComment(commentTextBody, parentCommentId);
@@ -186,6 +200,9 @@ const CommentsApp = () => {
   const addNewComment = async (commentTextBody: string, parentId?: string) =>
     setComments([await getNewAddedComment(commentTextBody, parentId), ...comments]);
 
+  /**
+   * Triggered on cancelling either the Edit/Reply when commenting.
+   */
   const onCancel = () => {
     const commentsWithNoRepliesAndEdits = comments.reduce((acc, c) => {
       if (c.commentType === CommentAction.EDIT) {
