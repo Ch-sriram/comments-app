@@ -18,9 +18,18 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@db/*": ["src/db/*"],
+      "@app/*": ["src/views/app/*"]
+    }
   },
   "include": [
-    "src"
+    "src",
+  ],
+  "exclude": [
+    // Deprecated Components
+    "src/views/app/components/Comments/Comment.deprecated.tsx"
   ]
 }
