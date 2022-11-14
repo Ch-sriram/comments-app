@@ -36,19 +36,25 @@ const CommentActions = styled.div`
 const CommonActionWrapperSpan = styled.span`
   cursor: pointer;
   transition: .1s all ease-out;
-  :hover {
+  :not(.upvotes) :hover {
     transform: translateY(-1px);
   }
 `;
 
 const UpvoteWrapper = styled(CommonActionWrapperSpan)`
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: steelblue;
-  transform: translateY(1px);
   :active {
     svg {
       fill: #4682d6;
     }
   }
+`;
+
+const UpvoteIconWrapper = styled(UpvoteWrapper)`
+  transform: translateY(1px);
 `;
 
 const ReplyWrapper = styled(CommonActionWrapperSpan)`
@@ -104,7 +110,8 @@ const CommentDisplayWithActions = (props: CommentDisplayWithActionsProps) => {
           className="comment-upvote"
           onClick={() => handleActionClick(CommentAction.UPVOTE)(props.comment.id)}
         >
-          {getIcon(CommentAction.UPVOTE)}
+          <UpvoteIconWrapper>{getIcon(CommentAction.UPVOTE)}</UpvoteIconWrapper>
+          <span className="upvotes">{props.comment.upvotes}</span>
         </UpvoteWrapper>
         <ReplyWrapper
           title="Reply to this Comment"
