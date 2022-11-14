@@ -4,8 +4,8 @@ import {
   getAllComments,
   createComment,
   updateCommentById,
-  // archiveComment,
-  // purgeComment
+  archiveComment,
+  purgeComment
 } from '../../db/repositories/comments';
 import { createUser, getAllUsers } from '../../db/repositories/users';
 import { CollectionTypes, DocumentTypes } from '../../db/types';
@@ -75,7 +75,6 @@ const CommentsApp = () => {
    * @param commentId considered to be the `parentId` for the dummy comment that'll be added for rendering a reply form
    */
   const onReplyClick: CommentActionClickFnType = commentId => {
-    console.log('onReplyClick', commentId);
     const commentsWithoutStaleRepliesAndEdits = comments.reduce((acc, c) => {
       if (c.commentType === CommentAction.REPLY || c.id === fakeCommentId) {
         return acc;
@@ -102,33 +101,58 @@ const CommentsApp = () => {
     setComments([replyWithoutCommentId, ...commentsWithoutStaleRepliesAndEdits]);
   };
 
-  // WIP
-  // const onDeleteClick = async (commentId: string) => {
-  //   try {
-  //     if (window.confirm('Are you sure you want to delete the comment?')) {
-  //       const doesCommentContainReplies = comments.some(c => c.parentId === commentId);
-  //       if (doesCommentContainReplies) {
-  //         await archiveComment({ commentId });
-  //         const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
-  //         const archivedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
-  //         commentsCopy[archivedCommentIndex].isArchived = true;
-  //         setComments(commentsCopy);
-  //       } else {
-  //         await purgeComment({ commentId });
-          
-  //       }
-  //     }
-  //   } catch (err: any) {
-  //     console.error(err, 'comment could not be deleted!');
-  //   }
-  // };
+  const doesCommentContainReplies = (commentId: string) => comments.some(c => c.parentId === commentId);
+
+  const purgeCommentsRecursively = async (
+    commentId: string | null,
+    remainingComments: CommentMetadata[],
+    purgedCommentIds: string[]
+  ) => {
+    if (!commentId) return;
+    const comment = remainingComments.find(c => c.id === commentId);
+    if (comment) {
+      const commentReplies = remainingComments.filter(c => c.parentId === commentId);
+      if (commentReplies.length === 0 && comment.isArchived) {
+        await purgeComment({ commentId });
+        purgedCommentIds.push(commentId);
+        await purgeCommentsRecursively(
+          comment.parentId,
+          remainingComments.filter(c => c.id !== commentId),
+          purgedCommentIds
+        );
+      }
+    }
+  }
+
+  const onDeleteClick = async (commentId: string) => {
+    try {
+      if (window.confirm('Are you sure you want to delete the comment?')) {
+        if (doesCommentContainReplies(commentId)) {
+          await archiveComment({ commentId });
+          const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
+          const archivedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
+          commentsCopy[archivedCommentIndex].isArchived = true;
+          commentsCopy[archivedCommentIndex].commentType = CommentAction.DELETE;
+          setComments(commentsCopy);
+        } else {
+          await purgeComment({ commentId });
+          const comment = comments.find(c => c.id === commentId);
+          const commentsCopy = comments.filter(c => c.id !== commentId) as Array<CommentMetadata>;
+          const purgedCommentIds: string[] = [];
+          await purgeCommentsRecursively(comment?.parentId || null, commentsCopy, purgedCommentIds);
+          setComments(commentsCopy.filter(c => purgedCommentIds.indexOf(c.id) === -1));
+        }
+      }
+    } catch (err: any) {
+      console.error(err, 'comment could not be deleted!');
+    }
+  };
 
   /**
    * Triggered when user clicks on any comment edit, if edit is available.
    * @param commentId is the `commentId` of the comment that's being edited.
    */
   const onEditClick: CommentActionClickFnType = commentId => {
-    console.log('onEditClick', commentId);
     const commentsCopyWithoutStaleRepliesOrEdits = comments.reduce((acc, c) => {
       if (c.commentType === CommentAction.REPLY) {
         return acc;
@@ -150,15 +174,16 @@ const CommentsApp = () => {
    * @param commentId unique identifier for the comment that's about to be edited.
    */
   const onEditSubmit = async (commentTextBody: string, commentId: string) => {
-    console.log('onEditSubmit', commentId);
-    await updateCommentById({ commentTextBody, commentId });
-    const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
-    const editedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
-    console.log(commentsCopy[editedCommentIndex]);
-    if (editedCommentIndex >= 0) {
-      commentsCopy[editedCommentIndex].commentTextBody = commentTextBody;
-      commentsCopy[editedCommentIndex].commentType = undefined;
-      setComments(commentsCopy);
+    try {
+      const editedCommentIndex = comments.findIndex(c => c.id === commentId);
+      const oldCommentTextBody = comments[editedCommentIndex].commentTextBody;
+      if (oldCommentTextBody !== commentTextBody) {
+        await updateCommentById({ commentTextBody, commentId });
+        setComments(comments.map(c => c.id === commentId ? ({ ...c, commentTextBody, commentType: undefined }) : ({ ...c })));
+      }
+    } catch (err: any) {
+      console.error('Could not sumbit the edited comment', err);
+      setComments(comments.map(c => c.id === commentId ? ({ ...c, commentType: undefined }) : ({ ...c })));
     }
   };
 
@@ -168,14 +193,16 @@ const CommentsApp = () => {
    * @param parentCommentId if `null`, then it's a comment with no parent (*i.e.* new top-level comment), otherwise, there's a comment which is parent to it.
    */
   const onReplySubmit = async (commentTextBody: string, parentCommentId: string | null) => {
-    console.log('onReplySubmit', parentCommentId);
-    const newComment = await getNewAddedComment(commentTextBody, parentCommentId);
     const commentsCopy = comments.map(c => ({ ...c }) as CommentMetadata);
-    const replyCommentIndex = commentsCopy.findIndex(c => c.id === fakeCommentId);
-    console.log(commentsCopy[replyCommentIndex]);
-    console.log(newComment);
-    commentsCopy[replyCommentIndex] = newComment;
-    setComments(commentsCopy);
+    try {
+      const newComment = await getNewAddedComment(commentTextBody, parentCommentId);
+      const replyCommentIndex = commentsCopy.findIndex(c => c.id === fakeCommentId);
+      commentsCopy[replyCommentIndex] = newComment;
+      setComments(commentsCopy);
+    } catch (err: any) {
+      console.error('Could not reply to the comment', err);
+      setComments(comments.filter(c => c.id !== fakeCommentId) as Array<CommentMetadata>);
+    }
   }
 
   const checkAndSetUserInStore = async (allUsers: CollectionTypes.Users) => {
@@ -194,27 +221,48 @@ const CommentsApp = () => {
   }
 
   const fetchAllUsers = async () => {
-    const allUsers = await getAllUsers();
-    setUsers(allUsers);
-    await checkAndSetUserInStore(allUsers);
-    return allUsers;
+    try {
+      const allUsers = await getAllUsers();
+      setUsers(allUsers);
+      await checkAndSetUserInStore(allUsers);
+      return allUsers;
+    } catch (err: any) {
+      console.error('Could not fetch all users', err);
+    }
   };
+
+  // const checkAndDeleteNoReplyComments = <T extends CommentMetadata>(allComments: T[], archivedComments: T[]) => {
+  //   const commentsWithNoReplies = allComments.filter(c => c.id !==)
+  // };
 
   const onMountFetch = async () => {
     setLoading(true);
-    const allUsers = await fetchAllUsers();
-    const allComments = await fetchAllComments();
-    const userTuplesIterable = allUsers.reduce((usersTillNow, user) => {
-      const { id, name } = user;
-      return [...usersTillNow, [id, name] as [string, string]];
-    }, [] as [string, string][]);
-    const userIdMap = new Map(userTuplesIterable);
-    const allCommentsWithUserName = allComments.reduce((commentsTillNow, comment) => {
-      const userName = userIdMap.get(comment.userId);
-      return [...commentsTillNow, { ...comment, userName } as CommentMetadata];
-    }, [] as CommentMetadata[]);
-    setComments(allCommentsWithUserName);
-    setLoading(false);
+    try {
+      const allUsers = await fetchAllUsers();
+      const allComments = await fetchAllComments();
+      if (allUsers && allComments) {
+        const userTuplesIterable = allUsers.reduce((usersTillNow, user) => {
+          const { id, name } = user;
+          return [...usersTillNow, [id, name] as [string, string]];
+        }, [] as [string, string][]);
+        const userIdMap = new Map(userTuplesIterable);
+        const archivedCommentIds: CommentMetadata[] = [];
+        const allCommentsWithUserName = allComments.reduce((commentsTillNow, comment) => {
+          const userName = userIdMap.get(comment.userId);
+          if (comment.isArchived && !doesCommentContainReplies(comment.id)) {
+            const archivedComment = { ...comment, commentType: CommentAction.DELETE } as CommentMetadata;
+            archivedCommentIds.push(archivedComment);
+            return [...commentsTillNow, archivedComment];
+          }
+          return [...commentsTillNow, { ...comment, userName } as CommentMetadata];
+        }, [] as CommentMetadata[]);
+        setComments(allCommentsWithUserName);
+      }
+    } catch (err: any) {
+      console.error('Mount Error', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const getNewAddedComment = async (commentTextBody: string, parentId?: string | null) => {
@@ -274,7 +322,7 @@ const CommentsApp = () => {
             commentActionListeners={{
               onReplyClick,
               onEditClick,
-              onDeleteClick: () => undefined,
+              onDeleteClick,
               onUpvoteClick: () => undefined
             }}
             commentInteractionListeners={{
