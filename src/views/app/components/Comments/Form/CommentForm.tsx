@@ -65,6 +65,7 @@ const CommentForm = ({
       textareaRef.current.setSelectionRange(commentText.length, commentText.length);
       textareaRef.current.focus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

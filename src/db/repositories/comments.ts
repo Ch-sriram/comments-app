@@ -15,6 +15,11 @@ export type CommentCreateRequestType = {
 export type CommentIdRequestType = {
   commentId: string;
 }
+export interface CommentUpdateRequestType {
+  commentId: string;
+  commentTextBody?: string;
+  upvotedBy?: Array<DocumentTypes.UserId>;
+}
   
 export const getAllComments = async () => {
   const allDocs = await db.getDocs(comments);
@@ -38,8 +43,7 @@ export const createComment = async ({
     createdAt,
     parentId: parentCommentId,
     commentTextBody,
-    upvotes: 0,
-    downvotes: 0
+    upvotedBy: []
   } as Partial<Comment>);
   return await getCommentById({ commentId: addedCommentRef.id });
 };
@@ -50,9 +54,14 @@ export const getCommentById = async({ commentId }: CommentIdRequestType) => {
   return { ...snapshot.data(), id: commentId } as Comment;
 };
 
-export const updateCommentById = async({ commentId, commentTextBody }: { commentId: string, commentTextBody: string }) => {
+export const updateCommentById = async({ commentId, commentTextBody, upvotedBy }: CommentUpdateRequestType) => {
   const docRef = db.doc(comments, commentId);
-  await db.updateDoc(docRef, { commentTextBody });
+  if (!commentTextBody && !upvotedBy) return;
+  const updatePayload = {
+    ...(commentTextBody ? { commentTextBody } : {}),
+    ...(upvotedBy ? { upvotedBy } : {})
+  } as Partial<Comment>;
+  await db.updateDoc(docRef, updatePayload);
 }
 
 export const archiveComment = async({ commentId }: CommentIdRequestType) => {
@@ -63,4 +72,9 @@ export const archiveComment = async({ commentId }: CommentIdRequestType) => {
 export const purgeComment = async ({ commentId }: CommentIdRequestType) => {
   const docRef = db.doc(comments, commentId);
   await db.deleteDoc(docRef);
+}
+
+export const purgeAllComments = async () => {
+  const allDocs = await db.getDocs(comments);
+  allDocs.forEach(async (doc) => await purgeComment({ commentId: doc.id }));
 }

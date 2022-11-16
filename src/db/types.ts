@@ -4,16 +4,16 @@ export namespace DocumentTypes {
     userId: string;
     parentId: string | null;
     replyId: string | null;
-    upvotes: number;
-    downvotes: number;
     createdAt: string;
     commentTextBody: string;
     isArchived?: boolean;
+    upvotedBy?: Array<UserId>;
   }
   export interface User {
     id: string;
     name: string;
   }
+  export type UserId = User['id'];
 }
 
 export namespace CollectionTypes {

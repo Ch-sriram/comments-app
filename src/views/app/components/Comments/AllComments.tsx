@@ -23,6 +23,7 @@ interface AllCommentsProps {
 type AllCommentsHelperProps = {
   comment: CommentMetadata;
   replies: Array<CommentMetadata>;
+  isReply?: boolean;
 } & Omit<AllCommentsProps, 'allUsers' | 'commonParentId'>;
 
 /**
@@ -32,6 +33,7 @@ type AllCommentsHelperProps = {
 const AllCommentsHelper = ({
   comment,
   replies,
+  isReply,
   comments,
   currentLevel = 0,
   commentActionListeners,
@@ -40,8 +42,9 @@ const AllCommentsHelper = ({
   return (<>
     <RenderComment
       key={comment.id}
-      currentLevel={currentLevel}
       comment={comment}
+      isReply={isReply}
+      currentLevel={currentLevel}
       commentActionListeners={commentActionListeners}
       commentInteractionListeners={commentInteractionListeners}
     />
@@ -49,6 +52,7 @@ const AllCommentsHelper = ({
       <AllCommentsHelper
         comment={reply}
         comments={comments}
+        isReply={true}
         replies={getReplies(comments, reply.id)}
         currentLevel={currentLevel + 1}
         commentActionListeners={commentActionListeners}

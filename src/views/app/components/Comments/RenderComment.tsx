@@ -8,7 +8,12 @@ import CommentDisplayWithActions from './CommentDisplayWithActions';
 import CommentEditForm from './Form/CommentEditForm';
 import CommentReplyForm from './Form/CommentReplyForm';
 
-const CommentWrapper = styled.div<{ commentLevel?: number, isReplyOrEdit?: boolean }>`
+type CommentWrapperProps = {
+  commentLevel?: number;
+  isReplyOrEdit?: boolean;
+  isReply?: boolean;
+};
+const CommentWrapper = styled.div<CommentWrapperProps>`
   display: flex;
   gap: 10px;
   position: relative;
@@ -17,12 +22,24 @@ const CommentWrapper = styled.div<{ commentLevel?: number, isReplyOrEdit?: boole
   ${({ commentLevel }) => !commentLevel ? '' : css`
     left: ${(commentLevel * 3)}%;
   `};
+  ${({ isReply }) => !isReply ? `` : css`
+    padding-left: 10px;
+    border-left: 1px solid #d8e2e3;
+    border-radius: 2px;
+  `}
 `;
 
 const CommentFormWrapper = styled.div`
   display: flex;
   flex-flow: column;
   flex-grow: 1;
+`;
+
+const DeletedComment = styled.div`
+  height: 16px;
+  width: fit-content;
+  color: ghostwhite;
+  background: grey;
 `;
 
 export type CommentActionClickFnType = (id: string) => void;
@@ -48,11 +65,12 @@ export interface CommentMetadata extends DocumentTypes.Comment {
 export interface RenderCommentProps {
   currentLevel: number;
   comment: CommentMetadata;
+  isReply?: boolean;
   commentActionListeners: CommentActionListenerType;
   commentInteractionListeners: CommentInteractionListenersType;
 }
 
-const RenderComment = ({ comment, currentLevel, commentActionListeners, ...rest }: RenderCommentProps) => {
+const RenderComment = ({ comment, isReply, currentLevel, commentActionListeners, ...rest }: RenderCommentProps) => {
   const { userId, userName } = comment;
   const uniqueKey = `${comment.userId}-${currentLevel}`;
   const avatarComponent = <Avatar key={uniqueKey} userId={userId} userName={userName} />;
@@ -81,7 +99,7 @@ const RenderComment = ({ comment, currentLevel, commentActionListeners, ...rest 
           </CommentFormWrapper>
         </>);
       case CommentAction.DELETE:
-        return <div>Deleted Comment</div>;
+        return <DeletedComment>{'[comment-deleted]'}</DeletedComment>;
       default:
         return (
           <React.Fragment>
@@ -94,6 +112,7 @@ const RenderComment = ({ comment, currentLevel, commentActionListeners, ...rest 
 
   return (
     <CommentWrapper
+      isReply={isReply}
       className="comment-wrapper"
       commentLevel={currentLevel}
       isReplyOrEdit={isReplyOrEdit}

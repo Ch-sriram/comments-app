@@ -5,7 +5,8 @@ import {
   createComment,
   updateCommentById,
   archiveComment,
-  purgeComment
+  purgeComment,
+  purgeAllComments
 } from '../../db/repositories/comments';
 import { createUser, getAllUsers } from '../../db/repositories/users';
 import { CollectionTypes, DocumentTypes } from '../../db/types';
@@ -14,6 +15,15 @@ import { useStore, StoreKeys } from './store';
 import { CommentActionClickFnType, CommentMetadata } from './components/Comments/RenderComment';
 import { CommentAction } from './components/util';
 import AllComments from './components/Comments/AllComments';
+import Button from './ui/Button';
+
+const CommentsAppHeaderSection = styled.div`
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+`;
 
 const NewCommentPostSection = styled.section`
   display: flex;
@@ -61,6 +71,7 @@ export const createdAtComparator = <T extends DocumentTypes.Comment>(commentA: T
 const CommentsApp = () => {
   const { store } = useStore();
   const [loading, setLoading] = React.useState<boolean>(false);
+  const [deleting, setDeleting] = React.useState<boolean>(false);
   const [users, setUsers] = React.useState<CollectionTypes.Users>([]);
   const [comments, setComments] = React.useState<Array<CommentMetadata>>([]);
 
@@ -69,6 +80,36 @@ const CommentsApp = () => {
     console.log('fetchAllComments', allComments);
     return allComments;
   }
+
+  /**
+   * Triggered when a comment's upvote button is clicked.
+   * @param commentId unique identifier of the comment.
+   */
+  const onUpvoteClick: CommentActionClickFnType = async (commentId) => {
+    try {
+      const currentUserId = store.get(StoreKeys.USER_ID);
+      if (!currentUserId) {
+        throw new Error('Unknown User');
+      }
+      const commentsCopy = comments.map(c => ({ ...c } as CommentMetadata));
+      const votedCommentIndex = commentsCopy.findIndex(c => c.id === commentId);
+      if (votedCommentIndex === -1) {
+        throw new Error('Comment not found in frontend state, check if the state is being updated properly.');
+      }
+      const currentCommentUpvotedBy = commentsCopy[votedCommentIndex].upvotedBy ?? [];
+      if (currentCommentUpvotedBy.indexOf(currentUserId) > -1) { // Current user already upvoted this comment ==> It's a downvote.
+        const filteredUpvotedBy = currentCommentUpvotedBy.filter(userId => userId !== currentUserId);
+        await updateCommentById({ commentId, upvotedBy: filteredUpvotedBy });
+        commentsCopy[votedCommentIndex].upvotedBy = filteredUpvotedBy;
+      } else { // Current user hasn't upvoted this comment ==> It's an upvote.
+        currentCommentUpvotedBy.push(currentUserId);
+        commentsCopy[votedCommentIndex].upvotedBy = currentCommentUpvotedBy;
+      }
+      setComments(commentsCopy);
+    } catch (err: any) {
+      console.error('Upvote Failed. User is unknown!', err);
+    }
+  };
   
   /**
    * Triggered when user clicks on any comment reply.
@@ -92,8 +133,7 @@ const CommentsApp = () => {
       commentType: CommentAction.REPLY,
       commentTextBody: '',
       createdAt: new Date().toISOString(),
-      downvotes: 0,
-      upvotes: 0,
+      upvotedBy: [] as DocumentTypes.UserId[],
       parentId: commentId,
       userId,
       userName
@@ -150,7 +190,7 @@ const CommentsApp = () => {
 
   /**
    * Triggered when user clicks on any comment edit, if edit is available.
-   * @param commentId is the `commentId` of the comment that's being edited.
+   * @param commentId unique identifier of the comment that's being edited.
    */
   const onEditClick: CommentActionClickFnType = commentId => {
     const commentsCopyWithoutStaleRepliesOrEdits = comments.reduce((acc, c) => {
@@ -231,10 +271,6 @@ const CommentsApp = () => {
     }
   };
 
-  // const checkAndDeleteNoReplyComments = <T extends CommentMetadata>(allComments: T[], archivedComments: T[]) => {
-  //   const commentsWithNoReplies = allComments.filter(c => c.id !==)
-  // };
-
   const onMountFetch = async () => {
     setLoading(true);
     try {
@@ -297,6 +333,21 @@ const CommentsApp = () => {
     setComments(commentsWithNoRepliesAndEdits);
   };
 
+  const onDeleteAllComments = async () => {
+    if (!window.confirm('Are you sure you want to delete all the comments?')) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await purgeAllComments();
+    } catch (err: any) {
+      console.error(`Deleting all comments failed.`, err);
+    } finally {
+      setDeleting(false);
+      onMountFetch();
+    }
+  };
+
   // Effects: onMount
   React.useEffect(() => {
     onMountFetch();
@@ -304,11 +355,15 @@ const CommentsApp = () => {
       setUsers([]);
       setComments([]);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="Comments-App">
-      <Title>Comments App</Title>
+      <CommentsAppHeaderSection className="comments-app-header">
+        <Title>Comments App</Title>
+        <Button onClick={onDeleteAllComments}>Delete All Comments</Button>
+      </CommentsAppHeaderSection>
       <NewCommentPostSection>
         <Heading>Post Your Comment</Heading>
         <CommentForm submitLabel={SubmitLabel.POST} handleCommentSubmit={addNewComment} />
@@ -323,7 +378,7 @@ const CommentsApp = () => {
               onReplyClick,
               onEditClick,
               onDeleteClick,
-              onUpvoteClick: () => undefined
+              onUpvoteClick
             }}
             commentInteractionListeners={{
               onEditCancel: onCancel,

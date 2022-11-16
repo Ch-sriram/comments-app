@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { useStore, StoreKeys } from '../../store';
 import { getIcon, CommentAction, CommentActionType } from '../util';
 import { CommentActionClickFnType, CommentMetadata } from './RenderComment';
@@ -41,15 +41,22 @@ const CommonActionWrapperSpan = styled.span`
   }
 `;
 
-const UpvoteWrapper = styled(CommonActionWrapperSpan)`
+const CommonUpvoteStyling = css`
+  svg {
+    fill: #4682d6;
+  }
+`;
+
+type UpvoteWrapperProps = { isUpvoted?: boolean };
+
+const UpvoteWrapper = styled(CommonActionWrapperSpan)<UpvoteWrapperProps>`
   display: flex;
   align-items: center;
   gap: 8px;
   color: steelblue;
+  ${({ isUpvoted }) => !isUpvoted ? '' : CommonUpvoteStyling}
   :active {
-    svg {
-      fill: #4682d6;
-    }
+    ${CommonUpvoteStyling}
   }
 `;
 
@@ -89,6 +96,7 @@ const CommentDisplayWithActions = (props: CommentDisplayWithActionsProps) => {
       default: return undefined;
     }
   };
+  const upvotedBy = props.comment.upvotedBy || [];
 
   const handleActionClick = (commentAction: CommentActionType) => {
     const callback = commentActionCallbackFactory(commentAction);
@@ -109,9 +117,10 @@ const CommentDisplayWithActions = (props: CommentDisplayWithActionsProps) => {
           title="Upvote Comment"
           className="comment-upvote"
           onClick={() => handleActionClick(CommentAction.UPVOTE)(props.comment.id)}
+          isUpvoted={currentUserId ? upvotedBy.indexOf(currentUserId) > -1 : undefined}
         >
           <UpvoteIconWrapper>{getIcon(CommentAction.UPVOTE)}</UpvoteIconWrapper>
-          <span className="upvotes">{props.comment.upvotes}</span>
+          <span className="upvotes">{props.comment.upvotedBy?.length || 0}</span>
         </UpvoteWrapper>
         <ReplyWrapper
           title="Reply to this Comment"
