@@ -3,6 +3,8 @@ import {
   Reply,
   Edit,
   Trash as Delete,
+  GitHub,
+  BytesizeIconsProps
 } from 'react-bytesize-icons';
 
 export const ACTION_ICONS_DEFAULT_SIZE = 18;
@@ -26,3 +28,5 @@ export const getIcon = (iconType: CommentActionType, width?: number) => {
     default: return null;
   }
 };
+
+export const getGitHubIcon = (props: BytesizeIconsProps) => <GitHub {...props} />;

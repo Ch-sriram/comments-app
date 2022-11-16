@@ -13,9 +13,30 @@ import { CollectionTypes, DocumentTypes } from '../../db/types';
 import CommentForm, { SubmitLabel } from './components/Comments/Form/CommentForm';
 import { useStore, StoreKeys } from './store';
 import { CommentActionClickFnType, CommentMetadata } from './components/Comments/RenderComment';
-import { CommentAction } from './components/util';
+import { CommentAction, getGitHubIcon } from './components/util';
 import AllComments from './components/Comments/AllComments';
 import Button from './ui/Button';
+
+const GithubIconWrapper = styled.div`
+  width: fit-content;
+  height: 20px;
+  position: fixed;
+  z-index: 99999;
+  right: 3%;
+  bottom: 5%;
+  svg {
+    cursor: pointer;
+  }
+`;
+
+const StyledLink = styled.a`
+  :active,
+  :visited,
+  :hover {
+    color: unset;
+  }
+`;
+
 
 const CommentsAppHeaderSection = styled.div`
   width: 100%;
@@ -362,6 +383,15 @@ const CommentsApp = () => {
 
   return (
     <div className="Comments-App">
+      <GithubIconWrapper>
+        <StyledLink
+          title="Check the source code"
+          target="_blank"
+          href="https://github.com/Ch-sriram/comments-app"
+        >
+          {getGitHubIcon({ height: 30 })}
+        </StyledLink>
+      </GithubIconWrapper>
       <CommentsAppHeaderSection className="comments-app-header">
         <Title>Comments App</Title>
         <Button onClick={onDeleteAllComments}>Delete All Comments</Button>
