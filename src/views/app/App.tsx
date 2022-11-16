@@ -256,6 +256,7 @@ const CommentsApp = () => {
       }
       const newUser = await createUser({ name: username });
       store.set(StoreKeys.USER_ID, newUser.id);
+      store.set(StoreKeys.USER_NAME, newUser.name);
     }
     store.set(StoreKeys.ALL_USERS, JSON.stringify(allUsers));
   }
@@ -304,7 +305,8 @@ const CommentsApp = () => {
   const getNewAddedComment = async (commentTextBody: string, parentId?: string | null) => {
     const createdAt = new Date().toISOString();
     const userId = store.get(StoreKeys.USER_ID);
-    const userName = users.find(user => user.id === userId)!.name;
+    const userNameFromStore = store.get(StoreKeys.USER_NAME);
+    const userName = users.find(user => user.id === userId)?.name ?? userNameFromStore ?? 'anonymous';
     const parentCommentId = parentId || null;
     const payload = { userId, userName, parentCommentId, commentTextBody, createdAt };
     return { ...(await createComment(payload)), userName, commentType: undefined } as CommentMetadata;

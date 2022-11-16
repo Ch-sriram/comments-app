@@ -1,4 +1,5 @@
 export enum StoreKeys {
   USER_ID = 'userId',
-  ALL_USERS = 'allUsers'
+  USER_NAME = 'userName',
+  ALL_USERS = 'allUsers',
 }
