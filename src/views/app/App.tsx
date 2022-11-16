@@ -125,6 +125,7 @@ const CommentsApp = () => {
       } else { // Current user hasn't upvoted this comment ==> It's an upvote.
         currentCommentUpvotedBy.push(currentUserId);
         commentsCopy[votedCommentIndex].upvotedBy = currentCommentUpvotedBy;
+        await updateCommentById({ commentId, upvotedBy: currentCommentUpvotedBy });
       }
       setComments(commentsCopy);
     } catch (err: any) {
