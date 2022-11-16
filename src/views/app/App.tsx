@@ -371,8 +371,9 @@ const CommentsApp = () => {
         <CommentForm submitLabel={SubmitLabel.POST} handleCommentSubmit={addNewComment} />
       </NewCommentPostSection>
       <CommentsSection>
+        {deleting && <div>{'deleting all comments...'}</div>}
         {loading && <div>{'loading comments...'}</div>}
-        {!loading &&
+        {!loading && !deleting &&
           <AllComments
             comments={comments}
             allUsers={users}
